@@ -1,18 +1,19 @@
 import { z } from "zod";
 
 const reportStatusSchema = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
+const idSchema = z.string().trim().min(1).max(64);
 
 export const productAreaCreateSchema = z.object({
   name: z.string().trim().min(2).max(120),
   description: z.string().trim().max(5000).optional().nullable(),
-  createdById: z.string().uuid(),
+  createdById: idSchema,
 });
 
 export const projectCreateSchema = z.object({
   name: z.string().trim().min(2).max(160),
   description: z.string().trim().max(5000).optional().nullable(),
-  productAreaId: z.string().uuid(),
-  createdById: z.string().uuid(),
+  productAreaId: idSchema,
+  createdById: idSchema,
   startDate: z.string().date().optional().nullable(),
   endDate: z.string().date().optional().nullable(),
 });
@@ -23,8 +24,8 @@ export const reportCreateSchema = z.object({
   fileUrl: z.string().url(),
   fileName: z.string().trim().min(1).max(255),
   fileSize: z.number().int().nonnegative().optional().nullable(),
-  projectId: z.string().uuid(),
-  createdById: z.string().uuid(),
+  projectId: idSchema,
+  createdById: idSchema,
 });
 
 export const researcherCreateSchema = z.object({
@@ -47,7 +48,7 @@ export const projectUpdateSchema = z
   .object({
     name: z.string().trim().min(2).max(160).optional(),
     description: z.string().trim().max(5000).optional().nullable(),
-    productAreaId: z.string().uuid().optional(),
+    productAreaId: idSchema.optional(),
     startDate: z.string().date().optional().nullable(),
     endDate: z.string().date().optional().nullable(),
   })
@@ -71,5 +72,5 @@ export const reportUpdateSchema = z
 
 export const researchPlanUpdateSchema = z.object({
   content: z.any(),
-  researcherId: z.string().uuid(),
+  researcherId: idSchema,
 });

@@ -1,5 +1,4 @@
 "use client";
-
 "use client";
 
 import Link from "next/link";
@@ -203,10 +202,11 @@ export default function ProjectsPage() {
           ) : (
             <ul className="divide-y divide-slate-200">
               {filteredItems.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
                   <Link
                     href={`/projects/${item.id}`}
-                    className="block px-6 py-4 hover:bg-slate-50 cursor-pointer transition-colors"
+                    className="block min-w-0 flex-1 cursor-pointer"
                   >
                     <h3 className="font-semibold text-slate-900">{item.name}</h3>
                     <p className="mt-1 text-sm text-slate-600">
@@ -218,6 +218,13 @@ export default function ProjectsPage() {
                       <span>💡 {item._count?.insights ?? 0} insights</span>
                     </p>
                   </Link>
+                    <Link
+                      href={`/projects/${item.id}/research-plan`}
+                      className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      Research Plan
+                    </Link>
+                  </div>
                 </li>
               ))}
             </ul>
