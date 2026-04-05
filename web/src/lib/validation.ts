@@ -88,3 +88,8 @@ export const projectInsightReviewSchema = z.object({
   reviewedById: idSchema,
   editorNotes: z.string().trim().max(5000).optional().nullable(),
 });
+
+export const projectChatRequestSchema = z.object({
+  researcherId: idSchema,
+  message: z.string().trim().min(2).max(5000),
+});

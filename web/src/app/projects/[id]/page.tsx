@@ -44,6 +44,18 @@ type ProjectInsight = {
   } | null;
 };
 
+type ProjectChatMessage = {
+  id: string;
+  role: "USER" | "ASSISTANT";
+  content: string;
+  createdAt: string;
+  researcher: {
+    id: string;
+    name: string;
+    email: string;
+  };
+};
+
 type ProjectDetails = {
   id: string;
   name: string;
@@ -78,6 +90,7 @@ export default function ProjectDetailsPage() {
   const [reports, setReports] = useState<ReportOption[]>([]);
   const [researchers, setResearchers] = useState<ResearcherOption[]>([]);
   const [insights, setInsights] = useState<ProjectInsight[]>([]);
+  const [chatMessages, setChatMessages] = useState<ProjectChatMessage[]>([]);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -90,25 +103,28 @@ export default function ProjectDetailsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCreatingInsight, setIsCreatingInsight] = useState(false);
   const [reviewingInsightId, setReviewingInsightId] = useState<string | null>(null);
+  const [isSendingChat, setIsSendingChat] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [insightContent, setInsightContent] = useState("");
   const [insightReportId, setInsightReportId] = useState("");
   const [reviewedById, setReviewedById] = useState("");
   const [notesByInsightId, setNotesByInsightId] = useState<Record<string, string>>({});
+  const [chatInput, setChatInput] = useState("");
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const [projectResponse, areasResponse, insightsResponse, reportsResponse, researchersResponse] =
+      const [projectResponse, areasResponse, insightsResponse, reportsResponse, researchersResponse, chatResponse] =
         await Promise.all([
         fetch(`/api/projects/${id}`, { cache: "no-store" }),
         fetch("/api/product-areas", { cache: "no-store" }),
         fetch(`/api/projects/${id}/insights`, { cache: "no-store" }),
         fetch("/api/reports", { cache: "no-store" }),
         fetch("/api/researchers", { cache: "no-store" }),
+        fetch(`/api/projects/${id}/chat`, { cache: "no-store" }),
       ]);
 
       const projectData = (await projectResponse.json()) as { data?: ProjectDetails; error?: string };
@@ -126,6 +142,10 @@ export default function ProjectDetailsPage() {
       };
       const researchersData = (await researchersResponse.json()) as {
         data?: ResearcherOption[];
+        error?: string;
+      };
+      const chatData = (await chatResponse.json()) as {
+        data?: ProjectChatMessage[];
         error?: string;
       };
 
@@ -149,6 +169,10 @@ export default function ProjectDetailsPage() {
         throw new Error(researchersData.error ?? "Could not load Researchers");
       }
 
+      if (!chatResponse.ok) {
+        throw new Error(chatData.error ?? "Could not load Chat Messages");
+      }
+
       const loaded = projectData.data;
 
       if (!loaded) {
@@ -162,6 +186,7 @@ export default function ProjectDetailsPage() {
       setReports(projectReports);
       setInsights(insightsData.data ?? []);
       setResearchers(researchersData.data ?? []);
+      setChatMessages(chatData.data ?? []);
 
       setName(loaded.name);
       setDescription(loaded.description ?? "");
@@ -334,6 +359,58 @@ export default function ProjectDetailsPage() {
       setError(message);
     } finally {
       setReviewingInsightId(null);
+    }
+  }
+
+  async function handleSendChat(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedMessage = chatInput.trim();
+    if (!trimmedMessage) {
+      return;
+    }
+
+    if (!reviewedById) {
+      setError("Select a researcher before sending chat messages.");
+      return;
+    }
+
+    setIsSendingChat(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/projects/${id}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          researcherId: reviewedById,
+          message: trimmedMessage,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        data?: {
+          userMessage: ProjectChatMessage;
+          reply: ProjectChatMessage;
+        };
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not send message");
+      }
+
+      const payload = data.data;
+      if (payload) {
+        setChatMessages((current) => [...current, payload.userMessage, payload.reply]);
+      }
+
+      setChatInput("");
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : "Unknown error";
+      setError(message);
+    } finally {
+      setIsSendingChat(false);
     }
   }
 
@@ -591,6 +668,56 @@ export default function ProjectDetailsPage() {
                   ))}
                 </ul>
               )}
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-sm text-slate-700">
+              <h2 className="text-lg font-semibold">Project Chat Assistant</h2>
+              <p className="mt-2 text-slate-600">
+                Ask questions scoped to this project. Responses prioritize approved insights, then revised and pending drafts.
+              </p>
+
+              <div className="mt-4 max-h-80 space-y-3 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
+                {chatMessages.length === 0 ? (
+                  <p className="text-sm text-slate-600">No chat messages yet.</p>
+                ) : (
+                  chatMessages.map((message) => (
+                    <article
+                      key={message.id}
+                      className={`rounded-lg px-3 py-2 ${
+                        message.role === "USER"
+                          ? "ml-8 border border-indigo-200 bg-indigo-50"
+                          : "mr-8 border border-slate-200 bg-white"
+                      }`}
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {message.role === "USER" ? "You" : "Assistant"} • {new Date(message.createdAt).toLocaleString()}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{message.content}</p>
+                    </article>
+                  ))
+                )}
+              </div>
+
+              <form onSubmit={handleSendChat} className="mt-4 space-y-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Question</span>
+                  <textarea
+                    required
+                    minLength={2}
+                    value={chatInput}
+                    onChange={(event) => setChatInput(event.target.value)}
+                    className="min-h-20 rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-indigo-500"
+                    placeholder="Summarize the strongest approved findings for this project and call out remaining risks."
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={isSendingChat || !chatInput.trim() || !reviewedById}
+                  className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-60"
+                >
+                  {isSendingChat ? "Asking..." : "Ask Assistant"}
+                </button>
+              </form>
             </section>
 
             <section className="rounded-2xl border border-rose-200 bg-rose-50 p-6 shadow-sm">

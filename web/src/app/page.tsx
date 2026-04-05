@@ -7,12 +7,13 @@ export default function Home() {
             Welcome to Research Repository
           </p>
           <h1 className="text-4xl font-bold tracking-tight">
-            Phase 4: Insight Review Workflow
+            Phase 5: Project-Scoped AI Assistant
           </h1>
           <p className="max-w-3xl text-lg leading-7 text-slate-600">
             Manage researchers, organize by product areas, create projects with timelines, upload
             reports, build rich research plans with collaborative editing, and review project
-            insights with explicit approval decisions.
+            insights with explicit approval decisions. Ask grounded project questions using
+            approved insights and research plan context.
           </p>
         </header>
 
@@ -26,6 +27,7 @@ export default function Home() {
               <li>4. Upload Reports to projects</li>
               <li>5. Build Research Plans collaboratively</li>
               <li>6. Review Insights with approval states</li>
+              <li>7. Ask project-scoped AI questions</li>
             </ol>
           </article>
 
@@ -37,6 +39,7 @@ export default function Home() {
               <li>✓ Rich-text research plans</li>
               <li>✓ Edit tracking & audit trail</li>
               <li>✓ Insight approval workflow</li>
+              <li>✓ Grounded project chat assistant</li>
               <li>✓ Safe entity deletion with guardrails</li>
             </ul>
           </article>

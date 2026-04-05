@@ -8,6 +8,7 @@ This app supports a research team workflow for Product Areas, Projects, Reports,
 - Phase 2: Implemented (project start/end dates, project Research Plan rich-text editor, last-editor tracking).
 - Phase 3: Implemented (Research Plan edit history with revision snapshots and restore-in-editor flow).
 - Phase 4: Implemented (Project Insights review workflow with status transitions and reviewer notes).
+- Phase 5: Implemented (Project-scoped chat assistant with retrieval grounded in Research Plan + Insights).
 
 ## Tech Stack
 
@@ -28,6 +29,9 @@ npm install
 
 ```bash
 DATABASE_URL="file:./dev.db"
+LLM_PROVIDER="ollama"
+OLLAMA_BASE_URL="http://127.0.0.1:11434"
+OLLAMA_CHAT_MODEL="llama3.1"
 ```
 
 3. Generate Prisma client:
@@ -120,6 +124,30 @@ Request body:
 - Enforces project scope for the targeted insight.
 - Updates status, reviewer, reviewed timestamp, and notes.
 
+## Project Chat APIs (Phase 5)
+
+### GET `/api/projects/:id/chat`
+- Lists project-scoped chat messages in chronological order.
+
+### POST `/api/projects/:id/chat`
+Request body:
+
+```json
+{
+	"researcherId": "<researcher-id>",
+	"message": "What are the strongest approved findings for this project?"
+}
+```
+
+- Validates payload and project/researcher existence.
+- Builds retrieval context from:
+	- Approved insights (highest confidence)
+	- Revised insights (caution)
+	- Pending insights (draft/low confidence)
+	- Research Plan content
+- Calls configured LLM provider (default: Ollama).
+- Persists both user and assistant messages as project-scoped chat history.
+
 ## Manual Test Checklist
 
 1. Create at least one Product Area, one Project, and one Researcher record in your local DB.
@@ -133,6 +161,7 @@ Request body:
 9. Confirm invalid project ids and invalid payloads return safe errors.
 10. In Project Details, create a draft insight from a project report.
 11. Review it as APPROVED / REVISED / REJECTED and verify reviewer metadata updates.
+12. Ask a project chat question and verify response references approved insights first.
 
 ## Verification Commands
 
