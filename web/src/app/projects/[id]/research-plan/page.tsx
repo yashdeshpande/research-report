@@ -37,6 +37,17 @@ type ResearcherOption = {
   email: string;
 };
 
+type ResearchPlanRevision = {
+  id: string;
+  content: Record<string, JSONValue>;
+  createdAt: string;
+  editedBy: {
+    id: string;
+    name: string;
+    email: string;
+  };
+};
+
 const EMPTY_DOC: Record<string, JSONValue> = {
   type: "doc",
   content: [{ type: "paragraph" }],
@@ -61,6 +72,7 @@ export default function ProjectResearchPlanPage() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [plan, setPlan] = useState<ResearchPlan | null>(null);
+  const [history, setHistory] = useState<ResearchPlanRevision[]>([]);
   const [researchers, setResearchers] = useState<ResearcherOption[]>([]);
   const [content, setContent] = useState<Record<string, JSONValue>>(EMPTY_DOC);
 
@@ -83,9 +95,10 @@ export default function ProjectResearchPlanPage() {
     setError(null);
 
     try {
-      const [projectResponse, planResponse, researchersResponse] = await Promise.all([
+      const [projectResponse, planResponse, historyResponse, researchersResponse] = await Promise.all([
         fetch(`/api/projects/${projectId}`, { cache: "no-store" }),
         fetch(`/api/research-plans/${projectId}`, { cache: "no-store" }),
+        fetch(`/api/research-plans/${projectId}/history?limit=15`, { cache: "no-store" }),
         fetch("/api/researchers", { cache: "no-store" }),
       ]);
 
@@ -96,6 +109,10 @@ export default function ProjectResearchPlanPage() {
 
       const planData = (await planResponse.json()) as {
         data?: ResearchPlan | null;
+        error?: string;
+      };
+      const historyData = (await historyResponse.json()) as {
+        data?: ResearchPlanRevision[];
         error?: string;
       };
       const researchersData = (await researchersResponse.json()) as {
@@ -115,8 +132,13 @@ export default function ProjectResearchPlanPage() {
         throw new Error(researchersData.error ?? "Could not load Researchers");
       }
 
+      if (!historyResponse.ok) {
+        throw new Error(historyData.error ?? "Could not load Research Plan history");
+      }
+
       setProject(projectData.data ?? null);
       setPlan(planData.data ?? null);
+      setHistory(historyData.data ?? []);
       setResearchers(researchersData.data ?? []);
       setContent(planData.data?.content ?? EMPTY_DOC);
 
@@ -154,6 +176,7 @@ export default function ProjectResearchPlanPage() {
 
       const responseData = (await response.json()) as {
         data?: ResearchPlan;
+        revision?: ResearchPlanRevision;
         error?: string;
       };
 
@@ -162,6 +185,9 @@ export default function ProjectResearchPlanPage() {
       }
 
       setPlan(responseData.data ?? null);
+      if (responseData.revision) {
+        setHistory((current) => [responseData.revision as ResearchPlanRevision, ...current]);
+      }
       setSuccessMessage("Research Plan saved.");
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Unknown error";
@@ -245,6 +271,46 @@ export default function ProjectResearchPlanPage() {
               >
                 {isSaving ? "Saving..." : "Save Research Plan"}
               </button>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold">Recent Edit History</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Latest saved versions for this project plan.
+              </p>
+
+              {history.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-600">No saved revisions yet.</p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {history.map((revision) => (
+                    <li
+                      key={revision.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
+                    >
+                      <div className="text-sm text-slate-700">
+                        <p className="font-medium">
+                          {revision.editedBy.name} ({revision.editedBy.email})
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Saved {formatTimestamp(revision.createdAt)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setContent(revision.content ?? EMPTY_DOC);
+                          setResearcherId((current) => current || revision.editedBy.id);
+                          setSuccessMessage("Loaded revision into editor. Save to apply.");
+                        }}
+                        className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                      >
+                        Load In Editor
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </>
         )}

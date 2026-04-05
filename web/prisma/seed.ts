@@ -8,6 +8,7 @@ async function main() {
   await db.documentChunk.deleteMany();
   await db.projectInsight.deleteMany();
   await db.reportContributor.deleteMany();
+  await db.researchPlanRevision.deleteMany();
   await db.researchPlan.deleteMany();
   await db.report.deleteMany();
   await db.project.deleteMany();

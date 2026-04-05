@@ -75,25 +75,42 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
       return NextResponse.json({ error: "Researcher not found" }, { status: 404 });
     }
 
-    const saved = await db.researchPlan.upsert({
-      where: { projectId: parsedParams.data.projectId },
-      update: {
-        content: parsedBody.data.content,
-        lastEditedById: parsedBody.data.researcherId,
-      },
-      create: {
-        projectId: parsedParams.data.projectId,
-        content: parsedBody.data.content,
-        lastEditedById: parsedBody.data.researcherId,
-      },
-      include: {
-        lastEditedBy: {
-          select: { id: true, name: true, email: true },
+    const saved = await db.$transaction(async (tx) => {
+      const plan = await tx.researchPlan.upsert({
+        where: { projectId: parsedParams.data.projectId },
+        update: {
+          content: parsedBody.data.content,
+          lastEditedById: parsedBody.data.researcherId,
         },
-      },
+        create: {
+          projectId: parsedParams.data.projectId,
+          content: parsedBody.data.content,
+          lastEditedById: parsedBody.data.researcherId,
+        },
+        include: {
+          lastEditedBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+
+      const revision = await tx.researchPlanRevision.create({
+        data: {
+          researchPlanId: plan.id,
+          editedById: parsedBody.data.researcherId,
+          content: parsedBody.data.content,
+        },
+        include: {
+          editedBy: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+
+      return { plan, revision };
     });
 
-    return NextResponse.json({ data: saved });
+    return NextResponse.json({ data: saved.plan, revision: saved.revision });
   } catch {
     return NextResponse.json({ error: "Could not save Research Plan" }, { status: 500 });
   }

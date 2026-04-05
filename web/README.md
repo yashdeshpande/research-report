@@ -6,11 +6,12 @@ This app supports a research team workflow for Product Areas, Projects, Reports,
 
 - Phase 1: Core workflow is implemented (Product Areas, Projects, Reports, CRUD, safe delete checks).
 - Phase 2: Implemented (project start/end dates, project Research Plan rich-text editor, last-editor tracking).
+- Phase 3: Implemented (Research Plan edit history with revision snapshots and restore-in-editor flow).
 
 ## Tech Stack
 
 - Next.js App Router
-- Prisma + PostgreSQL
+- Prisma + SQLite (local file)
 - Zod request validation
 - Tiptap editor for Research Plan rich text
 
@@ -25,7 +26,7 @@ npm install
 2. Set environment variables in `.env`:
 
 ```bash
-DATABASE_URL="postgresql://..."
+DATABASE_URL="file:./dev.db"
 ```
 
 3. Generate Prisma client:
@@ -40,7 +41,13 @@ npm run db:generate
 npm run db:push
 ```
 
-5. Start the app:
+5. Seed sample data (optional):
+
+```bash
+npm run db:seed
+```
+
+6. Start the app:
 
 ```bash
 npm run dev
@@ -64,13 +71,19 @@ Request body:
 		"type": "doc",
 		"content": [{ "type": "paragraph" }]
 	},
-	"researcherId": "<researcher-uuid>"
+	"researcherId": "<researcher-id>"
 }
 ```
 
 - Validates payload with Zod.
 - Verifies project and researcher exist.
 - Upserts research plan content and updates `lastEditedById`.
+- Creates an immutable revision snapshot in `research_plan_revisions`.
+
+### GET `/api/research-plans/:projectId/history?limit=15`
+- Validates project id and query params.
+- Returns recent revision snapshots including editor metadata.
+- Default limit is 20, maximum is 100.
 
 ## Manual Test Checklist
 
@@ -78,10 +91,11 @@ Request body:
 2. Open Project details, set Start Date and End Date, and save.
 3. Confirm invalid date range (end before start) is rejected.
 4. Open Research Plan from Project details.
-5. Enter rich text, provide an Editor Researcher ID, and click Save.
-6. Refresh and confirm content persists.
-7. Confirm last-edited metadata updates after save.
-8. Confirm invalid project ids and invalid payloads return safe errors.
+5. Enter rich text, choose an editor researcher, and click Save.
+6. Confirm a new row appears in Recent Edit History.
+7. Use Load In Editor on an older revision and save again.
+8. Refresh and confirm content + history persist.
+9. Confirm invalid project ids and invalid payloads return safe errors.
 
 ## Verification Commands
 
