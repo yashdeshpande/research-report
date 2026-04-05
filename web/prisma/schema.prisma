@@ -1,0 +1,203 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../prisma/generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum ReportStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ContributorRole {
+  AUTHOR
+  CONTRIBUTOR
+}
+
+enum InsightStatus {
+  PENDING_REVIEW
+  APPROVED
+  REVISED
+  REJECTED
+}
+
+enum SourceType {
+  REPORT
+  RESEARCH_PLAN
+  INSIGHT
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+model Researcher {
+  id            String              @id @default(cuid())
+  name          String
+  email         String              @unique
+  passwordHash  String              @map("password_hash")
+  avatarUrl     String?             @map("avatar_url")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  productAreas  ProductArea[]
+  projects      Project[]
+  reports       Report[]
+  contributions ReportContributor[]
+  plansEdited   ResearchPlan[]
+  insights      ProjectInsight[]    @relation("ProjectInsightReviewedBy")
+  chatMessages  ChatMessage[]
+
+  @@map("researchers")
+}
+
+model ProductArea {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   Researcher @relation(fields: [createdById], references: [id])
+  projects    Project[]
+
+  @@index([createdById])
+  @@map("product_areas")
+}
+
+model Project {
+  id            String          @id @default(cuid())
+  name          String
+  description   String?
+  startDate     DateTime?       @map("start_date")
+  endDate       DateTime?       @map("end_date")
+  productAreaId String          @map("product_area_id")
+  createdById   String          @map("created_by_id")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+  productArea   ProductArea     @relation(fields: [productAreaId], references: [id])
+  createdBy     Researcher      @relation(fields: [createdById], references: [id])
+  reports       Report[]
+  researchPlan  ResearchPlan?
+  insights      ProjectInsight[]
+  documentChunks DocumentChunk[]
+  chatMessages  ChatMessage[]
+
+  @@index([productAreaId])
+  @@index([createdById])
+  @@map("projects")
+}
+
+model ResearchPlan {
+  id             String     @id @default(cuid())
+  projectId      String     @unique @map("project_id")
+  content        Json
+  lastEditedById String     @map("last_edited_by_id")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  project        Project    @relation(fields: [projectId], references: [id])
+  lastEditedBy   Researcher @relation(fields: [lastEditedById], references: [id])
+
+  @@index([lastEditedById])
+  @@map("research_plans")
+}
+
+model Report {
+  id          String              @id @default(cuid())
+  title       String
+  notes       String?
+  fileUrl     String              @map("file_url")
+  fileName    String              @map("file_name")
+  fileSize    Int?                @map("file_size")
+  status      ReportStatus        @default(DRAFT)
+  projectId   String              @map("project_id")
+  createdById String              @map("created_by_id")
+  publishedAt DateTime?           @map("published_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  project     Project             @relation(fields: [projectId], references: [id])
+  createdBy   Researcher          @relation(fields: [createdById], references: [id])
+  contributors ReportContributor[]
+  generatedInsights ProjectInsight[]
+
+  @@index([projectId])
+  @@index([createdById])
+  @@index([status])
+  @@map("reports")
+}
+
+model ReportContributor {
+  id           String          @id @default(cuid())
+  reportId     String          @map("report_id")
+  researcherId String          @map("researcher_id")
+  role         ContributorRole
+  addedAt      DateTime        @default(now()) @map("added_at")
+  report       Report          @relation(fields: [reportId], references: [id])
+  researcher   Researcher      @relation(fields: [researcherId], references: [id])
+
+  @@unique([reportId, researcherId])
+  @@index([researcherId])
+  @@map("report_contributors")
+}
+
+model ProjectInsight {
+  id                    String        @id @default(cuid())
+  projectId             String        @map("project_id")
+  content               String
+  status                InsightStatus @default(PENDING_REVIEW)
+  generatedFromReportId String        @map("generated_from_report_id")
+  reviewedById          String?       @map("reviewed_by_id")
+  reviewedAt            DateTime?     @map("reviewed_at")
+  editorNotes           String?       @map("editor_notes")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  project               Project       @relation(fields: [projectId], references: [id])
+  generatedFromReport   Report        @relation(fields: [generatedFromReportId], references: [id])
+  reviewedBy            Researcher?   @relation("ProjectInsightReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([projectId])
+  @@index([generatedFromReportId])
+  @@index([status])
+  @@map("project_insights")
+}
+
+model DocumentChunk {
+  id         String     @id @default(cuid())
+  sourceType SourceType @map("source_type")
+  sourceId   String     @map("source_id")
+  projectId  String     @map("project_id")
+  chunkText  String     @map("chunk_text")
+  chunkIndex Int        @map("chunk_index")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  project    Project    @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@index([sourceType, sourceId])
+  @@map("document_chunks")
+}
+
+model ChatMessage {
+  id           String   @id @default(cuid())
+  projectId    String   @map("project_id")
+  researcherId String   @map("researcher_id")
+  role         ChatRole
+  content      String
+  createdAt    DateTime @default(now()) @map("created_at")
+  project      Project  @relation(fields: [projectId], references: [id])
+  researcher   Researcher @relation(fields: [researcherId], references: [id])
+
+  @@index([projectId])
+  @@index([researcherId])
+  @@map("chat_messages")
+}
