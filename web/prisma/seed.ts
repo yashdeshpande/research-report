@@ -176,12 +176,57 @@ async function main() {
 
   console.log("✓ Created 4 reports");
 
+  await db.projectInsight.createMany({
+    data: [
+      {
+        projectId: paymentProject1.id,
+        content:
+          "Users trust wallet-based options more when card decline recovery alternatives are shown inline.",
+        status: "APPROVED",
+        generatedFromReportId: report1.id,
+        reviewedById: researcher2.id,
+        reviewedAt: new Date("2026-02-12"),
+        editorNotes: "Validated across interview themes.",
+      },
+      {
+        projectId: paymentProject2.id,
+        content:
+          "Recovery intent drops sharply after the second failed attempt unless contextual error guidance is provided.",
+        status: "PENDING_REVIEW",
+        generatedFromReportId: report2.id,
+      },
+      {
+        projectId: checkoutProject.id,
+        content:
+          "Simplifying checkout from five steps to four improves completion most for mobile users on slower networks.",
+        status: "REVISED",
+        generatedFromReportId: report3.id,
+        reviewedById: researcher1.id,
+        reviewedAt: new Date("2026-03-01"),
+        editorNotes: "Request statistical significance details by segment before publication.",
+      },
+      {
+        projectId: loyaltyProject.id,
+        content:
+          "Participants perceived hidden tier thresholds as unfair, reducing confidence in long-term program value.",
+        status: "REJECTED",
+        generatedFromReportId: report4.id,
+        reviewedById: researcher3.id,
+        reviewedAt: new Date("2026-01-27"),
+        editorNotes: "Insufficient sample diversity for this conclusion.",
+      },
+    ],
+  });
+
+  console.log("✓ Created 4 project insights");
+
   console.log("\n✅ Database seeded successfully!");
   console.log(`
   Researchers: 3
   Product Areas: 3
   Projects: 4
   Reports: 4
+  Insights: 4
   
   Ready to use!
   `);

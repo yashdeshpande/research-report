@@ -7,6 +7,7 @@ This app supports a research team workflow for Product Areas, Projects, Reports,
 - Phase 1: Core workflow is implemented (Product Areas, Projects, Reports, CRUD, safe delete checks).
 - Phase 2: Implemented (project start/end dates, project Research Plan rich-text editor, last-editor tracking).
 - Phase 3: Implemented (Research Plan edit history with revision snapshots and restore-in-editor flow).
+- Phase 4: Implemented (Project Insights review workflow with status transitions and reviewer notes).
 
 ## Tech Stack
 
@@ -85,6 +86,40 @@ Request body:
 - Returns recent revision snapshots including editor metadata.
 - Default limit is 20, maximum is 100.
 
+## Project Insight APIs (Phase 4)
+
+### GET `/api/projects/:id/insights`
+- Lists project-scoped insights with source report and reviewer metadata.
+
+### POST `/api/projects/:id/insights`
+Request body:
+
+```json
+{
+	"content": "Insight text...",
+	"generatedFromReportId": "<report-id>"
+}
+```
+
+- Validates payload.
+- Enforces that source report belongs to the same project.
+- Creates an insight in `PENDING_REVIEW` status.
+
+### PATCH `/api/projects/:id/insights/:insightId`
+Request body:
+
+```json
+{
+	"status": "APPROVED",
+	"reviewedById": "<researcher-id>",
+	"editorNotes": "Optional review rationale"
+}
+```
+
+- Validates payload.
+- Enforces project scope for the targeted insight.
+- Updates status, reviewer, reviewed timestamp, and notes.
+
 ## Manual Test Checklist
 
 1. Create at least one Product Area, one Project, and one Researcher record in your local DB.
@@ -96,6 +131,8 @@ Request body:
 7. Use Load In Editor on an older revision and save again.
 8. Refresh and confirm content + history persist.
 9. Confirm invalid project ids and invalid payloads return safe errors.
+10. In Project Details, create a draft insight from a project report.
+11. Review it as APPROVED / REVISED / REJECTED and verify reviewer metadata updates.
 
 ## Verification Commands
 

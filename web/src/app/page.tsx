@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col px-8 py-12 text-slate-900">
@@ -9,11 +7,12 @@ export default function Home() {
             Welcome to Research Repository
           </p>
           <h1 className="text-4xl font-bold tracking-tight">
-            Phase 2: Core Workflows + Research Planning
+            Phase 4: Insight Review Workflow
           </h1>
           <p className="max-w-3xl text-lg leading-7 text-slate-600">
             Manage researchers, organize by product areas, create projects with timelines, upload
-            reports, and build rich research plans with collaborative editing.
+            reports, build rich research plans with collaborative editing, and review project
+            insights with explicit approval decisions.
           </p>
         </header>
 
@@ -26,6 +25,7 @@ export default function Home() {
               <li>3. Create Projects with start/end dates</li>
               <li>4. Upload Reports to projects</li>
               <li>5. Build Research Plans collaboratively</li>
+              <li>6. Review Insights with approval states</li>
             </ol>
           </article>
 
@@ -36,6 +36,7 @@ export default function Home() {
               <li>✓ Project timeline planning</li>
               <li>✓ Rich-text research plans</li>
               <li>✓ Edit tracking & audit trail</li>
+              <li>✓ Insight approval workflow</li>
               <li>✓ Safe entity deletion with guardrails</li>
             </ul>
           </article>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const reportStatusSchema = z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]);
+const insightStatusSchema = z.enum(["PENDING_REVIEW", "APPROVED", "REVISED", "REJECTED"]);
 const idSchema = z.string().trim().min(1).max(64);
 
 export const productAreaCreateSchema = z.object({
@@ -73,4 +74,17 @@ export const reportUpdateSchema = z
 export const researchPlanUpdateSchema = z.object({
   content: z.any(),
   researcherId: idSchema,
+});
+
+export const projectInsightCreateSchema = z.object({
+  content: z.string().trim().min(10).max(15000),
+  generatedFromReportId: idSchema,
+});
+
+export const projectInsightReviewSchema = z.object({
+  status: insightStatusSchema.refine((value) => value !== "PENDING_REVIEW", {
+    message: "Review status must be APPROVED, REVISED, or REJECTED",
+  }),
+  reviewedById: idSchema,
+  editorNotes: z.string().trim().max(5000).optional().nullable(),
 });

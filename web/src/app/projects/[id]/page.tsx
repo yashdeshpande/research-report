@@ -9,6 +9,41 @@ type ProductAreaOption = {
   name: string;
 };
 
+type ReportOption = {
+  id: string;
+  title: string;
+  project: {
+    id: string;
+    name: string;
+  };
+};
+
+type ResearcherOption = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+type InsightStatus = "PENDING_REVIEW" | "APPROVED" | "REVISED" | "REJECTED";
+
+type ProjectInsight = {
+  id: string;
+  content: string;
+  status: InsightStatus;
+  reviewedAt: string | null;
+  editorNotes: string | null;
+  createdAt: string;
+  generatedFromReport: {
+    id: string;
+    title: string;
+  };
+  reviewedBy?: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
+};
+
 type ProjectDetails = {
   id: string;
   name: string;
@@ -40,6 +75,9 @@ export default function ProjectDetailsPage() {
 
   const [item, setItem] = useState<ProjectDetails | null>(null);
   const [productAreas, setProductAreas] = useState<ProductAreaOption[]>([]);
+  const [reports, setReports] = useState<ReportOption[]>([]);
+  const [researchers, setResearchers] = useState<ResearcherOption[]>([]);
+  const [insights, setInsights] = useState<ProjectInsight[]>([]);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -50,21 +88,44 @@ export default function ProjectDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreatingInsight, setIsCreatingInsight] = useState(false);
+  const [reviewingInsightId, setReviewingInsightId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [insightContent, setInsightContent] = useState("");
+  const [insightReportId, setInsightReportId] = useState("");
+  const [reviewedById, setReviewedById] = useState("");
+  const [notesByInsightId, setNotesByInsightId] = useState<Record<string, string>>({});
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const [projectResponse, areasResponse] = await Promise.all([
+      const [projectResponse, areasResponse, insightsResponse, reportsResponse, researchersResponse] =
+        await Promise.all([
         fetch(`/api/projects/${id}`, { cache: "no-store" }),
         fetch("/api/product-areas", { cache: "no-store" }),
+        fetch(`/api/projects/${id}/insights`, { cache: "no-store" }),
+        fetch("/api/reports", { cache: "no-store" }),
+        fetch("/api/researchers", { cache: "no-store" }),
       ]);
 
       const projectData = (await projectResponse.json()) as { data?: ProjectDetails; error?: string };
       const areasData = (await areasResponse.json()) as {
         data?: ProductAreaOption[];
+        error?: string;
+      };
+      const insightsData = (await insightsResponse.json()) as {
+        data?: ProjectInsight[];
+        error?: string;
+      };
+      const reportsData = (await reportsResponse.json()) as {
+        data?: ReportOption[];
+        error?: string;
+      };
+      const researchersData = (await researchersResponse.json()) as {
+        data?: ResearcherOption[];
         error?: string;
       };
 
@@ -76,6 +137,18 @@ export default function ProjectDetailsPage() {
         throw new Error(areasData.error ?? "Could not load Product Areas");
       }
 
+      if (!insightsResponse.ok) {
+        throw new Error(insightsData.error ?? "Could not load Insights");
+      }
+
+      if (!reportsResponse.ok) {
+        throw new Error(reportsData.error ?? "Could not load Reports");
+      }
+
+      if (!researchersResponse.ok) {
+        throw new Error(researchersData.error ?? "Could not load Researchers");
+      }
+
       const loaded = projectData.data;
 
       if (!loaded) {
@@ -85,11 +158,24 @@ export default function ProjectDetailsPage() {
       setItem(loaded);
       setProductAreas(areasData.data ?? []);
 
+      const projectReports = (reportsData.data ?? []).filter((report) => report.project.id === id);
+      setReports(projectReports);
+      setInsights(insightsData.data ?? []);
+      setResearchers(researchersData.data ?? []);
+
       setName(loaded.name);
       setDescription(loaded.description ?? "");
       setProductAreaId(loaded.productAreaId);
       setStartDate(loaded.startDate ? loaded.startDate.slice(0, 10) : "");
       setEndDate(loaded.endDate ? loaded.endDate.slice(0, 10) : "");
+
+      if (projectReports.length > 0) {
+        setInsightReportId((current) => current || projectReports[0].id);
+      }
+
+      if ((researchersData.data ?? []).length > 0) {
+        setReviewedById((current) => current || (researchersData.data ?? [])[0].id);
+      }
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Unknown error";
       setError(message);
@@ -163,6 +249,91 @@ export default function ProjectDetailsPage() {
       setError(message);
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  function getStatusClasses(status: InsightStatus) {
+    if (status === "APPROVED") {
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    }
+
+    if (status === "REVISED") {
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    }
+
+    if (status === "REJECTED") {
+      return "border-rose-200 bg-rose-50 text-rose-800";
+    }
+
+    return "border-slate-200 bg-slate-50 text-slate-700";
+  }
+
+  async function handleCreateInsight(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsCreatingInsight(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/projects/${id}/insights`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: insightContent.trim(),
+          generatedFromReportId: insightReportId,
+        }),
+      });
+
+      const data = (await response.json()) as { data?: ProjectInsight; error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not create Insight");
+      }
+
+      if (data.data) {
+        setInsights((current) => [data.data as ProjectInsight, ...current]);
+      }
+
+      setInsightContent("");
+      await loadData();
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : "Unknown error";
+      setError(message);
+    } finally {
+      setIsCreatingInsight(false);
+    }
+  }
+
+  async function handleReviewInsight(insightId: string, status: Exclude<InsightStatus, "PENDING_REVIEW">) {
+    setReviewingInsightId(insightId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/projects/${id}/insights/${insightId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          reviewedById,
+          editorNotes: (notesByInsightId[insightId] ?? "").trim() || null,
+        }),
+      });
+
+      const data = (await response.json()) as { data?: ProjectInsight; error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not update Insight");
+      }
+
+      if (data.data) {
+        setInsights((current) =>
+          current.map((insight) => (insight.id === insightId ? (data.data as ProjectInsight) : insight))
+        );
+      }
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : "Unknown error";
+      setError(message);
+    } finally {
+      setReviewingInsightId(null);
     }
   }
 
@@ -287,6 +458,139 @@ export default function ProjectDetailsPage() {
               >
                 Open Research Plan
               </Link>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-sm text-slate-700">
+              <h2 className="text-lg font-semibold">Insights Review</h2>
+              <p className="mt-2 text-slate-600">
+                Capture draft insights from reports and run approval decisions with reviewer notes.
+              </p>
+
+              <form onSubmit={handleCreateInsight} className="mt-4 space-y-3 rounded-lg border border-slate-200 p-4">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Source Report</span>
+                  <select
+                    required
+                    value={insightReportId}
+                    onChange={(event) => setInsightReportId(event.target.value)}
+                    className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-indigo-500"
+                  >
+                    {reports.length === 0 ? <option value="">No reports available</option> : null}
+                    {reports.map((report) => (
+                      <option key={report.id} value={report.id}>
+                        {report.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Draft Insight</span>
+                  <textarea
+                    required
+                    minLength={10}
+                    value={insightContent}
+                    onChange={(event) => setInsightContent(event.target.value)}
+                    className="min-h-20 rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-indigo-500"
+                    placeholder="Users abandon checkout when recovery options are not visible after a decline."
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={isCreatingInsight || !insightReportId || !insightContent.trim()}
+                  className="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-60"
+                >
+                  {isCreatingInsight ? "Creating..." : "Add Draft Insight"}
+                </button>
+              </form>
+
+              <label className="mt-4 flex max-w-md flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Reviewer</span>
+                <select
+                  required
+                  value={reviewedById}
+                  onChange={(event) => setReviewedById(event.target.value)}
+                  className="rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-indigo-500"
+                >
+                  {researchers.length === 0 ? <option value="">No researchers available</option> : null}
+                  {researchers.map((researcher) => (
+                    <option key={researcher.id} value={researcher.id}>
+                      {researcher.name} ({researcher.email})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {insights.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-600">No insights yet.</p>
+              ) : (
+                <ul className="mt-4 space-y-3">
+                  {insights.map((insight) => (
+                    <li key={insight.id} className="rounded-lg border border-slate-200 p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-900">{insight.generatedFromReport.title}</p>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getStatusClasses(
+                            insight.status
+                          )}`}
+                        >
+                          {insight.status.replace("_", " ")}
+                        </span>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{insight.content}</p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Created {new Date(insight.createdAt).toLocaleString()}
+                        {insight.reviewedBy
+                          ? ` • Reviewed by ${insight.reviewedBy.name} on ${insight.reviewedAt ? new Date(insight.reviewedAt).toLocaleString() : "-"}`
+                          : ""}
+                      </p>
+
+                      <label className="mt-3 flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Editor Notes</span>
+                        <textarea
+                          value={notesByInsightId[insight.id] ?? insight.editorNotes ?? ""}
+                          onChange={(event) =>
+                            setNotesByInsightId((current) => ({
+                              ...current,
+                              [insight.id]: event.target.value,
+                            }))
+                          }
+                          className="min-h-16 rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-indigo-500"
+                          placeholder="Reasoning for this decision..."
+                        />
+                      </label>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={reviewingInsightId === insight.id || !reviewedById}
+                          onClick={() => handleReviewInsight(insight.id, "APPROVED")}
+                          className="rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-60"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={reviewingInsightId === insight.id || !reviewedById}
+                          onClick={() => handleReviewInsight(insight.id, "REVISED")}
+                          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                        >
+                          Needs Revision
+                        </button>
+                        <button
+                          type="button"
+                          disabled={reviewingInsightId === insight.id || !reviewedById}
+                          onClick={() => handleReviewInsight(insight.id, "REJECTED")}
+                          className="rounded-md border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 disabled:opacity-60"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
 
             <section className="rounded-2xl border border-rose-200 bg-rose-50 p-6 shadow-sm">
