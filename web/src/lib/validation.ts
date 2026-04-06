@@ -96,3 +96,11 @@ export const projectChatRequestSchema = z.object({
   researcherId: idSchema,
   message: z.string().trim().min(2).max(5000),
 });
+
+export const searchAssistantRequestSchema = z.object({
+  message: z.string().trim().min(2).max(5000),
+});
+
+export const indexingProcessSchema = z.object({
+  limit: z.number().int().min(1).max(20).optional(),
+});

@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { enqueueIndexingJob, processIndexingBatch } from "@/lib/indexing/jobs";
 import { researchPlanUpdateSchema } from "@/lib/validation";
 
 const paramsSchema = z.object({
@@ -116,6 +117,16 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
       });
 
       return { plan, revision };
+    });
+
+    await enqueueIndexingJob({
+      sourceType: "RESEARCH_PLAN",
+      sourceId: saved.plan.id,
+      projectId: parsedParams.data.projectId,
+    });
+
+    after(async () => {
+      await processIndexingBatch(1);
     });
 
     return NextResponse.json({ data: saved.plan, revision: saved.revision });

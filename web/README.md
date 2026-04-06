@@ -32,6 +32,9 @@ DATABASE_URL="file:./dev.db"
 LLM_PROVIDER="ollama"
 OLLAMA_BASE_URL="http://127.0.0.1:11434"
 OLLAMA_CHAT_MODEL="llama3.1"
+OLLAMA_EMBED_MODEL="nomic-embed-text"
+QDRANT_URL="http://127.0.0.1:6333"
+QDRANT_COLLECTION="research_chunks"
 ```
 
 3. Generate Prisma client:
@@ -146,6 +149,32 @@ Request body:
 - Searches projects, reports, insights, and product areas.
 - Returns both structured matches and an assistant response grounded in those matches.
 - Calls configured LLM provider (default: Ollama).
+
+## Indexing Pipeline (In Progress)
+
+- Report creation and Research Plan save now enqueue async indexing jobs.
+- Indexing jobs extract text, split into chunks, store plain chunks in `document_chunks`, and upsert embeddings to Qdrant.
+- Global assistant search now uses hybrid retrieval (keyword matches + vector evidence snippets).
+
+### Trigger indexing manually
+
+```bash
+npm run indexing:process
+```
+
+### Trigger indexing via API
+
+`POST /api/indexing/process`
+
+Request body:
+
+```json
+{
+	"limit": 3
+}
+```
+
+- `limit` is optional (default `2`, max `20`).
 
 ## Manual Test Checklist
 

@@ -43,6 +43,14 @@ enum ChatRole {
   ASSISTANT
 }
 
+enum IndexingStatus {
+  NOT_INDEXED
+  QUEUED
+  PROCESSING
+  INDEXED
+  FAILED
+}
+
 model Researcher {
   id            String              @id @default(cuid())
   name          String
@@ -94,6 +102,7 @@ model Project {
   insights      ProjectInsight[]
   documentChunks DocumentChunk[]
   chatMessages  ChatMessage[]
+  indexingJobs  IndexingJob[]
 
   @@index([productAreaId])
   @@index([createdById])
@@ -107,6 +116,9 @@ model ResearchPlan {
   fileUrl        String?    @map("file_url")
   fileName       String?    @map("file_name")
   fileSize       Int?       @map("file_size")
+  indexingStatus IndexingStatus @default(NOT_INDEXED) @map("indexing_status")
+  indexingError  String?    @map("indexing_error")
+  lastIndexedAt  DateTime?  @map("last_indexed_at")
   lastEditedById String     @map("last_edited_by_id")
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
@@ -140,6 +152,9 @@ model Report {
   fileUrl     String              @map("file_url")
   fileName    String              @map("file_name")
   fileSize    Int?                @map("file_size")
+  indexingStatus IndexingStatus   @default(NOT_INDEXED) @map("indexing_status")
+  indexingError  String?          @map("indexing_error")
+  lastIndexedAt  DateTime?        @map("last_indexed_at")
   status      ReportStatus        @default(DRAFT)
   projectId   String              @map("project_id")
   createdById String              @map("created_by_id")
@@ -199,6 +214,7 @@ model DocumentChunk {
   projectId  String     @map("project_id")
   chunkText  String     @map("chunk_text")
   chunkIndex Int        @map("chunk_index")
+  embedding  String?    @map("embedding")
   createdAt  DateTime   @default(now()) @map("created_at")
   project    Project    @relation(fields: [projectId], references: [id])
 
@@ -220,4 +236,25 @@ model ChatMessage {
   @@index([projectId])
   @@index([researcherId])
   @@map("chat_messages")
+}
+
+model IndexingJob {
+  id            String         @id @default(cuid())
+  sourceType    SourceType     @map("source_type")
+  sourceId      String         @map("source_id")
+  projectId     String         @map("project_id")
+  status        IndexingStatus @default(QUEUED)
+  attempts      Int            @default(0)
+  payload       Json?
+  errorMessage  String?        @map("error_message")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  startedAt     DateTime?      @map("started_at")
+  completedAt   DateTime?      @map("completed_at")
+  project       Project        @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+  @@index([status, createdAt])
+  @@index([sourceType, sourceId])
+  @@map("indexing_jobs")
 }

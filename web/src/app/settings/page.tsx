@@ -9,6 +9,37 @@ type Researcher = {
   avatarUrl?: string | null;
 };
 
+type IndexingStats = {
+  reports: Partial<Record<string, number>>;
+  researchPlans: Partial<Record<string, number>>;
+  jobs: Partial<Record<string, number>>;
+  totalChunks: number;
+};
+
+const INDEX_STATUSES = ["NOT_INDEXED", "QUEUED", "PROCESSING", "INDEXED", "FAILED"] as const;
+
+const STATUS_STYLES: Record<string, string> = {
+  NOT_INDEXED: "bg-slate-100 text-slate-600",
+  QUEUED: "bg-amber-100 text-amber-700",
+  PROCESSING: "bg-blue-100 text-blue-700",
+  INDEXED: "bg-emerald-100 text-emerald-700",
+  FAILED: "bg-rose-100 text-rose-700",
+};
+
+function StatusPill({ label, count }: { label: string; count: number }) {
+  if (count === 0) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+        STATUS_STYLES[label] ?? "bg-slate-100 text-slate-600"
+      }`}
+    >
+      {label.replace("_", " ")}
+      <span className="rounded-full bg-white/60 px-1.5 py-px font-bold">{count}</span>
+    </span>
+  );
+}
+
 export default function SettingsPage() {
   const [items, setItems] = useState<Researcher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -16,6 +47,11 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [indexingStats, setIndexingStats] = useState<IndexingStats | null>(null);
+  const [indexingStatsLoading, setIndexingStatsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isBackfilling, setIsBackfilling] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -51,9 +87,47 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const loadIndexingStats = useCallback(async () => {
+    setIndexingStatsLoading(true);
+    try {
+      const res = await fetch("/api/indexing/process", { cache: "no-store" });
+      const data = (await res.json()) as { data?: IndexingStats };
+      setIndexingStats(data.data ?? null);
+    } catch {
+      // non-fatal
+    } finally {
+      setIndexingStatsLoading(false);
+    }
+  }, []);
+
+  async function handleRunBackfill() {
+    setIsBackfilling(true);
+    try {
+      await fetch("/api/indexing/backfill", { method: "POST" });
+      await loadIndexingStats();
+    } finally {
+      setIsBackfilling(false);
+    }
+  }
+
+  async function handleProcessJobs() {
+    setIsProcessing(true);
+    try {
+      await fetch("/api/indexing/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 20 }),
+      });
+      await loadIndexingStats();
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    loadIndexingStats();
+  }, [loadData, loadIndexingStats]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,6 +188,116 @@ export default function SettingsPage() {
             {successMessage}
           </section>
         ) : null}
+
+        {/* Vector Indexing section */}
+        <div>
+          <h2 className="text-xl font-semibold text-slate-800">Vector Embedding</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Track indexing progress for reports and research plans used by the search assistant.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+          {indexingStatsLoading ? (
+            <div className="px-6 py-8 text-center text-sm text-slate-500">Loading indexing stats...</div>
+          ) : indexingStats ? (
+            <div className="divide-y divide-slate-100">
+              {/* Summary row */}
+              <div className="grid grid-cols-3 gap-6 px-6 py-5">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-slate-900">{indexingStats.totalChunks}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Total chunks indexed</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {(indexingStats.reports["INDEXED"] ?? 0) + (indexingStats.researchPlans["INDEXED"] ?? 0)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">Sources indexed</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-rose-600">
+                    {(indexingStats.reports["FAILED"] ?? 0) + (indexingStats.researchPlans["FAILED"] ?? 0)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">Sources failed</p>
+                </div>
+              </div>
+
+              {/* Reports breakdown */}
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">Reports</p>
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {INDEX_STATUSES.map((s) => (
+                      <StatusPill key={s} label={s} count={indexingStats.reports[s] ?? 0} />
+                    ))}
+                    {INDEX_STATUSES.every((s) => (indexingStats.reports[s] ?? 0) === 0) && (
+                      <span className="text-xs text-slate-400">No reports</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Research plans breakdown */}
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">Research Plans</p>
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {INDEX_STATUSES.map((s) => (
+                      <StatusPill key={s} label={s} count={indexingStats.researchPlans[s] ?? 0} />
+                    ))}
+                    {INDEX_STATUSES.every((s) => (indexingStats.researchPlans[s] ?? 0) === 0) && (
+                      <span className="text-xs text-slate-400">No research plans</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Job queue breakdown */}
+              <div className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">Job queue</p>
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    {["QUEUED", "PROCESSING", "INDEXED", "FAILED"].map((s) => (
+                      <StatusPill key={s} label={s} count={indexingStats.jobs[s] ?? 0} />
+                    ))}
+                    {["QUEUED", "PROCESSING", "INDEXED", "FAILED"].every(
+                      (s) => (indexingStats.jobs[s] ?? 0) === 0,
+                    ) && <span className="text-xs text-slate-400">No jobs</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4">
+                <button
+                  type="button"
+                  onClick={() => loadIndexingStats()}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRunBackfill}
+                  disabled={isBackfilling}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {isBackfilling ? "Enqueueing..." : "Enqueue unindexed"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProcessJobs}
+                  disabled={isProcessing}
+                  className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
+                >
+                  {isProcessing ? "Processing..." : "Process jobs"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="px-6 py-8 text-center text-sm text-slate-500">Could not load indexing stats.</div>
+          )}
+        </div>
 
         {/* Researchers section */}
         <div>

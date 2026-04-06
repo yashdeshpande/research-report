@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { llmProvider } from "@/lib/llm";
+import { searchAssistantRequestSchema } from "@/lib/validation";
+import { vectorStore } from "@/lib/vector-store";
 
-const searchAssistantSchema = z.object({
-  message: z.string().trim().min(2).max(5000),
-});
+type EvidenceItem = {
+  id: string;
+  score: number;
+  sourceType: "REPORT" | "RESEARCH_PLAN" | "INSIGHT";
+  sourceId: string;
+  projectId: string;
+  chunkIndex: number;
+  text: string;
+  projectName: string;
+  sourceLabel: string;
+};
 
 function limitText(value: string, maxLength: number) {
   if (value.length <= maxLength) {
@@ -16,10 +25,77 @@ function limitText(value: string, maxLength: number) {
   return `${value.slice(0, maxLength)}...`;
 }
 
+async function buildEvidence(query: string): Promise<EvidenceItem[]> {
+  const embedding = await llmProvider.embed(query);
+  const chunks = await vectorStore.search(embedding.vector, { limit: 8 });
+
+  if (chunks.length === 0) {
+    return [];
+  }
+
+  const projectIds = [...new Set(chunks.map((chunk) => chunk.projectId))];
+  const reportIds = [...new Set(chunks.filter((chunk) => chunk.sourceType === "REPORT").map((chunk) => chunk.sourceId))];
+  const planIds = [...new Set(chunks.filter((chunk) => chunk.sourceType === "RESEARCH_PLAN").map((chunk) => chunk.sourceId))];
+  const insightIds = [...new Set(chunks.filter((chunk) => chunk.sourceType === "INSIGHT").map((chunk) => chunk.sourceId))];
+
+  const [projects, reports, plans, insights] = await Promise.all([
+    db.project.findMany({
+      where: { id: { in: projectIds } },
+      select: { id: true, name: true },
+    }),
+    reportIds.length > 0
+      ? db.report.findMany({
+          where: { id: { in: reportIds } },
+          select: { id: true, title: true },
+        })
+      : Promise.resolve([]),
+    planIds.length > 0
+      ? db.researchPlan.findMany({
+          where: { id: { in: planIds } },
+          select: { id: true, project: { select: { name: true } } },
+        })
+      : Promise.resolve([]),
+    insightIds.length > 0
+      ? db.projectInsight.findMany({
+          where: { id: { in: insightIds } },
+          select: { id: true, content: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const projectNameById = new Map(projects.map((project) => [project.id, project.name]));
+  const reportTitleById = new Map(reports.map((report) => [report.id, report.title]));
+  const planLabelById = new Map(plans.map((plan) => [plan.id, `Research Plan (${plan.project.name})`]));
+  const insightLabelById = new Map(
+    insights.map((insight) => [insight.id, limitText(insight.content, 72)]),
+  );
+
+  return chunks.map((chunk) => {
+    const sourceLabel =
+      chunk.sourceType === "REPORT"
+        ? reportTitleById.get(chunk.sourceId) ?? "Report"
+        : chunk.sourceType === "RESEARCH_PLAN"
+          ? planLabelById.get(chunk.sourceId) ?? "Research Plan"
+          : insightLabelById.get(chunk.sourceId) ?? "Insight";
+
+    return {
+      id: chunk.id,
+      score: chunk.score,
+      sourceType: chunk.sourceType,
+      sourceId: chunk.sourceId,
+      projectId: chunk.projectId,
+      chunkIndex: chunk.chunkIndex,
+      text: limitText(chunk.text, 260),
+      projectName: projectNameById.get(chunk.projectId) ?? "Unknown Project",
+      sourceLabel,
+    };
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const parsedBody = searchAssistantSchema.safeParse(body);
+    const parsedBody = searchAssistantRequestSchema.safeParse(body);
 
     if (!parsedBody.success) {
       return NextResponse.json(
@@ -30,7 +106,7 @@ export async function POST(request: Request) {
 
     const query = parsedBody.data.message;
 
-    const [projects, reports, insights, productAreas] = await Promise.all([
+    const [projects, reports, insights, productAreas, evidence] = await Promise.all([
       db.project.findMany({
         where: {
           OR: [
@@ -111,6 +187,7 @@ export async function POST(request: Request) {
         },
         take: 5,
       }),
+      buildEvidence(query).catch(() => []),
     ]);
 
     const contextBlock = [
@@ -156,6 +233,16 @@ export async function POST(request: Request) {
             )
             .join("\n")
         : "None",
+      "",
+      "Vector Evidence Chunks:",
+      evidence.length > 0
+        ? evidence
+            .map(
+              (item, index) =>
+                `${index + 1}. [${item.sourceType}] ${item.sourceLabel} in ${item.projectName} (score ${item.score.toFixed(3)}): ${item.text}`,
+            )
+            .join("\n")
+        : "None",
     ].join("\n");
 
     const result = await llmProvider.chat([
@@ -184,6 +271,7 @@ export async function POST(request: Request) {
           productAreas,
           tags: [],
         },
+        evidence,
       },
     });
   } catch (error) {

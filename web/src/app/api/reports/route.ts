@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { enqueueIndexingJob, processIndexingBatch } from "@/lib/indexing/jobs";
 import { reportCreateSchema } from "@/lib/validation";
 
 export async function GET(request: Request) {
@@ -80,6 +81,19 @@ export async function POST(request: Request) {
       include: {
         contributors: true,
       },
+    });
+
+    await enqueueIndexingJob({
+      sourceType: "REPORT",
+      sourceId: created.id,
+      projectId: created.projectId,
+      payload: {
+        fileName: created.fileName,
+      },
+    });
+
+    after(async () => {
+      await processIndexingBatch(1);
     });
 
     return NextResponse.json({ data: created }, { status: 201 });
