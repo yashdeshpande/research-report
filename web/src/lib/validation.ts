@@ -22,7 +22,7 @@ export const projectCreateSchema = z.object({
 export const reportCreateSchema = z.object({
   title: z.string().trim().min(2).max(240),
   notes: z.string().trim().max(15000).optional().nullable(),
-  fileUrl: z.string().url(),
+  fileUrl: z.string().min(1).max(2048),
   fileName: z.string().trim().min(1).max(255),
   fileSize: z.number().int().nonnegative().optional().nullable(),
   projectId: idSchema,
@@ -61,7 +61,7 @@ export const reportUpdateSchema = z
   .object({
     title: z.string().trim().min(2).max(240).optional(),
     notes: z.string().trim().max(15000).optional().nullable(),
-    fileUrl: z.string().url().optional(),
+    fileUrl: z.string().min(1).max(2048).optional(),
     fileName: z.string().trim().min(1).max(255).optional(),
     fileSize: z.number().int().nonnegative().optional().nullable(),
     status: reportStatusSchema.optional(),
@@ -74,6 +74,9 @@ export const reportUpdateSchema = z
 export const researchPlanUpdateSchema = z.object({
   content: z.any(),
   researcherId: idSchema,
+  fileUrl: z.string().min(1).max(2048).optional().nullable(),
+  fileName: z.string().trim().min(1).max(255).optional().nullable(),
+  fileSize: z.number().int().nonnegative().optional().nullable(),
 });
 
 export const projectInsightCreateSchema = z.object({

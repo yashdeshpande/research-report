@@ -40,7 +40,7 @@ export default function ProductAreasPage() {
     );
   }, [items, searchQuery]);
 
-  async function loadItems() {
+  async function loadData() {
     setIsLoading(true);
     setError(null);
 
@@ -80,7 +80,8 @@ export default function ProductAreasPage() {
   }
 
   useEffect(() => {
-    loadItems();
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -110,7 +111,7 @@ export default function ProductAreasPage() {
       setName("");
       setDescription("");
       setIsModalOpen(false);
-      await loadItems();
+      await loadData();
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Unknown error";
       setError(message);
@@ -171,17 +172,17 @@ export default function ProductAreasPage() {
           ) : (
             <ul className="divide-y divide-slate-200">
               {filteredItems.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
                   <Link
                     href={`/product-areas/${item.id}`}
-                    className="block px-6 py-4 hover:bg-slate-50 cursor-pointer transition-colors"
+                    className="block min-w-0 flex-1 cursor-pointer"
                   >
                     <h3 className="font-semibold text-slate-900">{item.name}</h3>
                     <p className="mt-1 text-sm text-slate-600">
                       {item.description || "No description"}
                     </p>
                     <p className="mt-2 text-xs text-slate-500">
-                      {item._count?.projects ?? 0} projects
+                      📁 {item._count?.projects ?? 0} project{(item._count?.projects ?? 0) !== 1 ? "s" : ""}
                     </p>
                   </Link>
                 </li>

@@ -29,6 +29,9 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
         select: {
           id: true,
           updatedAt: true,
+          fileUrl: true,
+          fileName: true,
+          fileSize: true,
           lastEditedBy: {
             select: { id: true, name: true, email: true },
           },

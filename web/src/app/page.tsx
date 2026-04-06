@@ -61,152 +61,129 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-8 py-10 text-slate-900">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <header className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-          <div className="space-y-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-700">
-              Global Repository Assistant
-            </p>
-            <h1 className="text-5xl font-bold tracking-tight">Search Anything In The Repository</h1>
-            <p className="max-w-3xl text-lg leading-8 text-slate-600">
-              Use this assistant to search across projects, reports, insights, and the rest of the repository from
-              one place. Ask direct questions, look for themes, or use it as a fast entry point into the records you
-              need.
-            </p>
-          </div>
+    <main className="min-h-screen bg-slate-100 px-4 py-10 text-slate-900 md:px-8">
+      <div className="mx-auto flex min-h-[88vh] w-full max-w-6xl flex-col items-center justify-center">
+        <section className="w-full max-w-5xl text-center">
+          <header className="space-y-2">
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900 md:text-5xl">Ask Once. Search Everything.</h1>
+            <p className="text-base text-slate-600">Agentic search across projects, reports, and insights.</p>
+          </header>
+        </section>
 
-          <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-800">Assistant Instructions</h2>
-            <p className="mt-3 text-sm leading-6 text-emerald-900">
-              Search for anything in this repository using the chat assistant. It currently searches projects,
-              reports, insights, and product areas. Tag search will appear after the taxonomy model is implemented.
-            </p>
-          </section>
-        </header>
-
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <label className="flex flex-col gap-2 text-sm text-slate-700">
-              Ask the repository assistant
+        <section className="mx-auto w-full max-w-5xl mt-16">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <form onSubmit={handleSubmit} className="p-4 md:p-5">
+              <label className="sr-only" htmlFor="agentic-search-input">
+                Ask the assistant
+              </label>
               <textarea
+                id="agentic-search-input"
                 required
                 minLength={2}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="min-h-28 rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none focus:border-emerald-500"
-                placeholder="Search for checkout insights, related reports, and the projects they belong to."
+                className="min-h-28 w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-base text-center outline-none focus:border-slate-500"
+                placeholder="Search for related insights, their source reports, and linked projects"
               />
-            </label>
 
-            <div className="flex flex-wrap gap-2">
-              {examplePrompts.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  onClick={() => setQuery(prompt)}
-                  className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {examplePrompts.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => setQuery(prompt)}
+                    className="rounded-md border border-slate-300 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
 
-            <div className="flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={isLoading || !query.trim()}
-                className="rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
-              >
-                {isLoading ? "Searching..." : "Search Repository"}
-              </button>
-              <Link
-                href="/insights"
-                className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-              >
-                Open Insights
-              </Link>
-            </div>
-          </form>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <div className="text-xs text-slate-500">Projects • Reports • Insights • Product Areas</div>
+                <div className="flex items-center justify-center gap-2">
+                  <Link
+                    href="/insights"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Insights
+                  </Link>
+                  <button
+                    type="submit"
+                    disabled={isLoading || !query.trim()}
+                    className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-60"
+                  >
+                    {isLoading ? "Searching..." : "Run Search"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </section>
 
         {error ? (
-          <section className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          <section className="mx-auto mt-4 w-full max-w-5xl rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm text-rose-800">
             {error}
           </section>
         ) : null}
 
         {result ? (
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-            <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Assistant Response</h2>
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">{result.reply}</p>
+          <section className="mx-auto mt-6 w-full max-w-5xl space-y-4 pb-8 text-center">
+            <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-600">Assistant Response</h2>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">{result.reply}</p>
             </article>
 
-            <div className="space-y-6">
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-600">Projects</h3>
+            <section className="grid gap-4 md:grid-cols-3">
+              <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Projects</h3>
                 {result.matches.projects.length === 0 ? (
-                  <p className="mt-3 text-sm text-slate-500">No project matches.</p>
+                  <p className="mt-3 text-sm text-slate-500">None</p>
                 ) : (
-                  <ul className="mt-3 space-y-3 text-sm text-slate-700">
-                    {result.matches.projects.map((project) => (
+                  <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                    {result.matches.projects.slice(0, 4).map((project) => (
                       <li key={project.id}>
-                        <Link href={`/projects/${project.id}`} className="font-medium text-slate-900 hover:text-emerald-700">
+                        <Link href={`/projects/${project.id}`} className="font-medium text-slate-900 hover:text-slate-700">
                           {project.name}
                         </Link>
-                        <p className="text-xs text-slate-500">{project.productArea.name}</p>
                       </li>
                     ))}
                   </ul>
                 )}
-              </section>
+              </article>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-600">Reports</h3>
+              <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Reports</h3>
                 {result.matches.reports.length === 0 ? (
-                  <p className="mt-3 text-sm text-slate-500">No report matches.</p>
+                  <p className="mt-3 text-sm text-slate-500">None</p>
                 ) : (
-                  <ul className="mt-3 space-y-3 text-sm text-slate-700">
-                    {result.matches.reports.map((report) => (
+                  <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                    {result.matches.reports.slice(0, 4).map((report) => (
                       <li key={report.id}>
-                        <Link href={`/reports/${report.id}`} className="font-medium text-slate-900 hover:text-emerald-700">
+                        <Link href={`/reports/${report.id}`} className="font-medium text-slate-900 hover:text-slate-700">
                           {report.title}
                         </Link>
-                        <p className="text-xs text-slate-500">
-                          {report.project.name} • {report.status}
-                        </p>
                       </li>
                     ))}
                   </ul>
                 )}
-              </section>
+              </article>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-600">Insights</h3>
+              <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Insights</h3>
                 {result.matches.insights.length === 0 ? (
-                  <p className="mt-3 text-sm text-slate-500">No insight matches.</p>
+                  <p className="mt-3 text-sm text-slate-500">None</p>
                 ) : (
-                  <ul className="mt-3 space-y-3 text-sm text-slate-700">
-                    {result.matches.insights.map((insight) => (
-                      <li key={insight.id}>
-                        <p className="font-medium text-slate-900">{insight.content}</p>
-                        <p className="text-xs text-slate-500">
-                          {insight.project.name} • {insight.status}
-                        </p>
+                  <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                    {result.matches.insights.slice(0, 4).map((insight) => (
+                      <li key={insight.id} className="line-clamp-2 text-left">
+                        {insight.content}
                       </li>
                     ))}
                   </ul>
                 )}
-              </section>
-
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-600">Tags</h3>
-                <p className="mt-3 text-sm text-slate-500">
-                  Tag search will appear after the taxonomy model is implemented.
-                </p>
-              </section>
-            </div>
+              </article>
+            </section>
           </section>
         ) : null}
       </div>

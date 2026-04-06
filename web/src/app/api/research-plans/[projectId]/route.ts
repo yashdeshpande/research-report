@@ -76,16 +76,24 @@ export async function PATCH(request: Request, context: { params: Promise<{ proje
     }
 
     const saved = await db.$transaction(async (tx) => {
+      const fileFields = {
+        ...(parsedBody.data.fileUrl !== undefined ? { fileUrl: parsedBody.data.fileUrl } : {}),
+        ...(parsedBody.data.fileName !== undefined ? { fileName: parsedBody.data.fileName } : {}),
+        ...(parsedBody.data.fileSize !== undefined ? { fileSize: parsedBody.data.fileSize } : {}),
+      };
+
       const plan = await tx.researchPlan.upsert({
         where: { projectId: parsedParams.data.projectId },
         update: {
           content: parsedBody.data.content,
           lastEditedById: parsedBody.data.researcherId,
+          ...fileFields,
         },
         create: {
           projectId: parsedParams.data.projectId,
           content: parsedBody.data.content,
           lastEditedById: parsedBody.data.researcherId,
+          ...fileFields,
         },
         include: {
           lastEditedBy: {

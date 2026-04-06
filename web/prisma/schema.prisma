@@ -104,6 +104,9 @@ model ResearchPlan {
   id             String     @id @default(cuid())
   projectId      String     @unique @map("project_id")
   content        Json
+  fileUrl        String?    @map("file_url")
+  fileName       String?    @map("file_name")
+  fileSize       Int?       @map("file_size")
   lastEditedById String     @map("last_edited_by_id")
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")

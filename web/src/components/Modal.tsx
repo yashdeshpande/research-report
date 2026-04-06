@@ -23,7 +23,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-lg bg-white shadow-lg">
+        <div className="w-full max-w-lg rounded-lg bg-white shadow-lg">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
             <h2 className="text-lg font-semibold text-slate-900">{title}</h2>

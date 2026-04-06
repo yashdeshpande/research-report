@@ -23,7 +23,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
         select: { id: true, name: true, email: true },
       },
       projects: {
-        select: { id: true, name: true, createdAt: true },
+        select: { id: true, name: true, description: true, createdAt: true },
         orderBy: { createdAt: "desc" },
       },
       _count: {
