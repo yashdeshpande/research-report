@@ -13,8 +13,9 @@ type ReportDetails = {
   fileSize: number | null;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   publishedAt: string | null;
-  _count?: {
-    generatedInsights: number;
+  project?: {
+    id: string;
+    name: string;
   };
 };
 
@@ -129,7 +130,8 @@ export default function ReportDetailsPage() {
         throw new Error(data.error ?? "Could not delete Report");
       }
 
-      router.push("/reports");
+      const backHref = item?.project?.id ? `/projects/${item.project.id}` : "/projects";
+      router.push(backHref);
       router.refresh();
     } catch (requestError) {
       const message = requestError instanceof Error ? requestError.message : "Unknown error";
@@ -145,7 +147,7 @@ export default function ReportDetailsPage() {
         <header className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold tracking-tight">Report Details</h1>
           <Link
-            href="/reports"
+            href={item?.project?.id ? `/projects/${item.project.id}` : "/projects"}
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
           >
             Back
@@ -232,7 +234,7 @@ export default function ReportDetailsPage() {
                   />
                 </label>
 
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 flex items-center gap-4">
                   <button
                     type="submit"
                     disabled={isSaving}
@@ -240,28 +242,16 @@ export default function ReportDetailsPage() {
                   >
                     {isSaving ? "Saving..." : "Save Changes"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="rounded-lg border border-rose-300 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                  >
+                    {isDeleting ? "Deleting..." : "Delete Report"}
+                  </button>
                 </div>
               </form>
-            </section>
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm text-sm text-slate-700">
-              <h2 className="text-lg font-semibold">Dependencies</h2>
-              <p className="mt-2">Generated Insights: {item._count?.generatedInsights ?? 0}</p>
-            </section>
-
-            <section className="rounded-2xl border border-rose-200 bg-rose-50 p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-rose-900">Danger Zone</h2>
-              <p className="mt-2 text-sm text-rose-800">
-                Deletion is blocked while generated insights still reference this report.
-              </p>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="mt-4 rounded-lg bg-rose-700 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-800 disabled:opacity-60"
-              >
-                {isDeleting ? "Deleting..." : "Delete Report"}
-              </button>
             </section>
           </>
         ) : null}

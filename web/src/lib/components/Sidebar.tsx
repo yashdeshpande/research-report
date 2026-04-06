@@ -11,9 +11,9 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { href: "/", label: "Home", icon: "🏠" },
-  { href: "/researchers", label: "Researchers", icon: "👤" },
   { href: "/product-areas", label: "Product Areas", icon: "📦" },
   { href: "/projects", label: "Projects", icon: "📋" },
+  { href: "/insights", label: "Insights", icon: "💡" },
 ];
 
 export function Sidebar() {
@@ -57,8 +57,19 @@ export function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-slate-200 px-6 py-4">
-          <p className="text-xs text-slate-500">Logged in as User</p>
+        <div className="border-t border-slate-200 px-4 py-4 space-y-2">
+          <Link
+            href="/settings"
+            className={`flex items-center gap-3 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              isActive("/settings")
+                ? "bg-indigo-100 text-indigo-700"
+                : "text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            <span className="text-lg">⚙️</span>
+            Settings
+          </Link>
+          <p className="px-4 text-xs text-slate-500">Logged in as User</p>
         </div>
       </div>
     </aside>

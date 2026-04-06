@@ -3,9 +3,13 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { reportCreateSchema } from "@/lib/validation";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const projectId = searchParams.get("projectId") ?? undefined;
+
   const items = await db.report.findMany({
     orderBy: { createdAt: "desc" },
+    where: projectId ? { projectId } : undefined,
     include: {
       project: {
         select: { id: true, name: true },

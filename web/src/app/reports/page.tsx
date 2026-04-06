@@ -163,15 +163,24 @@ export default function ReportsPage() {
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-slate-900">Reports</h1>
             <p className="mt-2 text-slate-600">
-              Add report files to projects and keep optional notes as supporting context.
+              Add report files to projects and keep optional notes as supporting context. Reports are the entry point
+              for source research before insights are explored in their own area.
             </p>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-          >
-            + New Report
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/insights"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            >
+              Open Insights
+            </Link>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+            >
+              + New Report
+            </button>
+          </div>
         </div>
 
         {/* Alerts */}

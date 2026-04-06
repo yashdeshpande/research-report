@@ -1,14 +1,14 @@
 # Research Repository Web App
 
-This app supports a research team workflow for Product Areas, Projects, Reports, and project planning.
+This app supports a research team workflow for Product Areas, Projects, Reports, Insights, and project planning.
 
 ## Current Phase Coverage
 
 - Phase 1: Core workflow is implemented (Product Areas, Projects, Reports, CRUD, safe delete checks).
 - Phase 2: Implemented (project start/end dates, project Research Plan rich-text editor, last-editor tracking).
 - Phase 3: Implemented (Research Plan edit history with revision snapshots and restore-in-editor flow).
-- Phase 4: Implemented (Project Insights review workflow with status transitions and reviewer notes).
-- Phase 5: Implemented (Project-scoped chat assistant with retrieval grounded in Research Plan + Insights).
+- Phase 4: Implemented (project-scoped insights APIs, now surfaced through a dedicated repository insights area).
+- Phase 5: Implemented (repository-wide assistant on Home plus repository insights browsing).
 
 ## Tech Stack
 
@@ -124,29 +124,28 @@ Request body:
 - Enforces project scope for the targeted insight.
 - Updates status, reviewer, reviewed timestamp, and notes.
 
-## Project Chat APIs (Phase 5)
+## Repository Insights APIs
 
-### GET `/api/projects/:id/chat`
-- Lists project-scoped chat messages in chronological order.
+### GET `/api/insights?query=&status=&projectId=&reportId=`
+- Lists insights across the repository.
+- Supports filtering by content query, status, project, and source report.
+- Returns linked project and report metadata for navigation.
 
-### POST `/api/projects/:id/chat`
+## Repository Assistant API (Phase 5)
+
+### POST `/api/search/assistant`
 Request body:
 
 ```json
 {
-	"researcherId": "<researcher-id>",
-	"message": "What are the strongest approved findings for this project?"
+	"message": "Search for checkout insights, reports, and related projects across the repository"
 }
 ```
 
-- Validates payload and project/researcher existence.
-- Builds retrieval context from:
-	- Approved insights (highest confidence)
-	- Revised insights (caution)
-	- Pending insights (draft/low confidence)
-	- Research Plan content
+- Validates the freeform repository search request.
+- Searches projects, reports, insights, and product areas.
+- Returns both structured matches and an assistant response grounded in those matches.
 - Calls configured LLM provider (default: Ollama).
-- Persists both user and assistant messages as project-scoped chat history.
 
 ## Manual Test Checklist
 
@@ -159,9 +158,10 @@ Request body:
 7. Use Load In Editor on an older revision and save again.
 8. Refresh and confirm content + history persist.
 9. Confirm invalid project ids and invalid payloads return safe errors.
-10. In Project Details, create a draft insight from a project report.
-11. Review it as APPROVED / REVISED / REJECTED and verify reviewer metadata updates.
-12. Ask a project chat question and verify response references approved insights first.
+10. Open Home and ask the global assistant to search for projects, reports, and insights.
+11. Confirm the assistant response and the match lists reflect repository data.
+12. Open the dedicated Insights page and verify filtering by search text and status.
+13. Open a Project detail page and confirm it links out to Reports and Insights instead of embedding insight review and chat.
 
 ## Verification Commands
 
